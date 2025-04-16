@@ -38,3 +38,8 @@ Make a whole party of cats appear next to your progress bar, jamming along with 
 ## Made with Spicetify Creator
 
 - https://github.com/spicetify/spicetify-creator
+
+## Forked from spicetify-cat-jam-synced
+Thank you to the original creator(s) for the idea and code! :)
+
+- https://github.com/BlafKing/spicetify-cat-jam-synced
