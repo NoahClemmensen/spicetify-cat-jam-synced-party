@@ -1,10 +1,10 @@
 import { SettingsSection } from "spcr-settings";
-const settings = new SettingsSection("Cat-Jam Settings", "catjam-settings");
+const settings = new SettingsSection("Cat-Jam-Party Settings", "catjamparty-settings");
 let audioData;
 
 // Function to adjust the video playback rate based on the current track's BPM
 async function getPlaybackRate(audioData) {
-    let videoDefaultBPM = Number(settings.getFieldValue("catjam-webm-bpm"));
+    let videoDefaultBPM = Number(settings.getFieldValue("catjamparty-webm-bpm"));
     console.log(videoDefaultBPM);
     if (!videoDefaultBPM) {
         videoDefaultBPM = 135.48;
@@ -12,23 +12,23 @@ async function getPlaybackRate(audioData) {
 
     if (audioData && audioData?.track) {
         let trackBPM = audioData?.track?.tempo  // BPM of the current track
-        let bpmMethod = settings.getFieldValue("catjam-webm-bpm-method");
+        let bpmMethod = settings.getFieldValue("catjamparty-webm-bpm-method");
         let bpmToUse = trackBPM;
         if (bpmMethod !== "Track BPM") {
-            console.log("[CAT-JAM] Using danceability, energy and track BPM to calculate better BPM");
+            console.log("[CAT-JAM-PARTY] Using danceability, energy and track BPM to calculate better BPM");
             bpmToUse = await getBetterBPM(trackBPM);
-            console.log("[CAT-JAM] Better BPM:", bpmToUse)
+            console.log("[CAT-JAM-PARTY] Better BPM:", bpmToUse)
         }
         let playbackRate = 1;
         if (bpmToUse) {
             playbackRate = bpmToUse / videoDefaultBPM;
         }
-        console.log("[CAT-JAM] Track BPM:", trackBPM)
-        console.log("[CAT-JAM] Cat jam synchronized, playback rate set to:", playbackRate)
+        console.log("[CAT-JAM-PARTY] Track BPM:", trackBPM)
+        console.log("[CAT-JAM-PARTY] Cat jam synchronized, playback rate set to:", playbackRate)
 
         return playbackRate; // Return the calculated playback rate
     } else {
-        console.warn("[CAT-JAM] BPM data not available for this track, cat will not be jamming accurately :(");
+        console.warn("[CAT-JAM-PARTY] BPM data not available for this track, cat will not be jamming accurately :(");
         return 1; // Return default playback rate if BPM data is not available
     }
 }
@@ -41,14 +41,14 @@ async function fetchAudioData(retryDelay = 200, maxRetries = 10) {
     } catch (error) {
         if (typeof error === "object" && error !== null && 'message' in error) {
             const message = error.message;
-            
+
             if (message.includes("Cannot read properties of undefined") && maxRetries > 0) {
-                console.log("[CAT-JAM] Retrying to fetch audio data...");
+                console.log("[CAT-JAM-PARTY] Retrying to fetch audio data...");
                 await new Promise(resolve => setTimeout(resolve, retryDelay));
                 return fetchAudioData(retryDelay, maxRetries - 1); // Retry fetching audio data
             }
         } else {
-            console.warn(`[CAT-JAM] Error fetching audio data: ${error}`);
+            console.warn(`[CAT-JAM-PARTY] Error fetching audio data: ${error}`);
         }
         return null; // Return default playback rate on failure
     }
@@ -67,7 +67,7 @@ async function syncTiming(startTime, progress) {
                 if (upcomingBeat) {
                     const operationTime = performance.now() - startTime; // Time taken for the operation
                     const delayUntilNextBeat = Math.max(0, (upcomingBeat.start - progress) * 1000 - operationTime); // Calculate delay until the next beat
-                    
+
                     setTimeout(() => {
                         videoElement.currentTime = 0; // Reset video to start
                         videoElement.play(); // Play the video
@@ -76,7 +76,7 @@ async function syncTiming(startTime, progress) {
                     videoElement.currentTime = 0; // Reset video to start if no upcoming beat
                     videoElement.play();
                 }
-                console.log("[CAT-JAM] Resynchronized to nearest beat");
+                console.log("[CAT-JAM-PARTY] Resynchronized to nearest beat");
             } else {
                 videoElement.currentTime = 0; // Play the video without delay if no beat information
                 videoElement.play();
@@ -85,7 +85,7 @@ async function syncTiming(startTime, progress) {
             videoElement.pause(); // Pause the video if Spotify is not playing
         }
     } else {
-        console.error("[CAT-JAM] Video element not found.");
+        console.error("[CAT-JAM-PARTY] Video element not found.");
     }
 }
 
@@ -125,10 +125,10 @@ async function createWebMVideo() {
         if (existingVideo) {
             existingVideo.remove();
         }
-        
+
         //
         let videoURL = String(settings.getFieldValue("catjam-webm-link"));
-        
+
         if (!videoURL) {
             videoURL = "https://github.com/BlafKing/spicetify-cat-jam-synced/raw/main/src/resources/catjam.webm"
         }
@@ -157,7 +157,7 @@ async function createWebMVideo() {
             videoElement.pause();
         }
     } catch (error) {
-        console.error("[CAT-JAM] Could not create cat-jam video element: ", error);
+        console.error("[CAT-JAM-PARTY] Could not create cat-jam video element: ", error);
     }
 }
 
@@ -175,7 +175,7 @@ async function getBetterBPM(currentBPM) {
         const energy = Math.round(100 * res.energy);
         betterBPM = calculateBetterBPM(danceability, energy, currentBPM)
     } catch (error) {
-        console.error("[CAT-JAM] Could not get audio features: ", error);
+        console.error("[CAT-JAM-PARTY] Could not get audio features: ", error);
     } finally {
         return betterBPM;
     }
@@ -234,7 +234,7 @@ async function main() {
     while (!Spicetify?.Player?.addEventListener || !Spicetify?.getAudioData) {
         await new Promise(resolve => setTimeout(resolve, 100)); // Wait for 100ms before checking again
     }
-    console.log("[CAT-JAM] Extension loaded.");
+    console.log("[CAT-JAM-PARTY] Extension loaded.");
     let audioData; // Initialize audio data variable
 
     // Create Settings UI
@@ -256,12 +256,12 @@ async function main() {
         lastProgress = progress;
         syncTiming(startTime, progress); // Synchronize video timing with the current progress
     });
-    
+
     let lastProgress = 0; // Initialize last known progress
     Spicetify.Player.addEventListener("onprogress", async () => {
         const currentTime = performance.now();
         let progress = Spicetify.Player.getProgress();
-        
+
         // Check if a significant skip in progress has occurred or if a significant time has passed
         if (Math.abs(progress - lastProgress) >= 500) {
             syncTiming(currentTime, progress); // Synchronize video timing again
@@ -276,16 +276,16 @@ async function main() {
         const videoElement = document.getElementById('catjam-webm')as HTMLVideoElement;
         if (videoElement) {
             audioData = await fetchAudioData(); // Fetch current audio data
-            console.log("[CAT-JAM] Audio data fetched:", audioData);
+            console.log("[CAT-JAM-PARTY] Audio data fetched:", audioData);
             if (audioData && audioData.beats && audioData.beats.length > 0) {
                 const firstBeatStart = audioData.beats[0].start; // Get start time of the first beat
-                
+
                 // Adjust video playback rate based on the song's BPM
                 videoElement.playbackRate = await getPlaybackRate(audioData);
-    
+
                 const operationTime = performance.now() - startTime; // Calculate time taken for operations
                 const delayUntilFirstBeat = Math.max(0, firstBeatStart * 1000 - operationTime); // Calculate delay until the first beat
-    
+
                 setTimeout(() => {
                     videoElement.currentTime = 0; // Ensure video starts from the beginning
                     videoElement.play(); // Play the video
@@ -296,7 +296,7 @@ async function main() {
                 videoElement.play(); // Play the video
             }
         } else {
-            console.error("[CAT-JAM] Video element not found.");
+            console.error("[CAT-JAM-PARTY] Video element not found.");
         }
     });
 }

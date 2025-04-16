@@ -1,9 +1,9 @@
 [
     {
-      "name": "Cat-Jam Synced",
-      "description": "An extension that lets a cat jam in sync with the beat of your music.",
+      "name": "Cat-Jam-Party Synced",
+      "description": "An extension that lets a whole party of cats jam in sync with the beat of your music.",
       "preview": "marketplace/preview.gif",
-      "main": "marketplace/cat-jam.js",
+      "main": "marketplace/cat-jam-party.js",
       "readme": "README.md"
     }
 ]

@@ -2,7 +2,7 @@
 
 ![preview](marketplace/preview.gif)
 
-Make a cat appear next to your progress bar, jamming along with your music synchronized to the beat!
+Make a whole party of cats appear next to your progress bar, jamming along with your music synchronized to the beat!
 
 > ⚙ are located at the bottom of the regular Spotify settings.
 
