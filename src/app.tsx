@@ -1,5 +1,41 @@
-import { SettingsSection } from "spcr-settings";
+import {SettingsSection} from "spcr-settings";
+
+type cat = {
+    id: string;
+    defaultUrl: string;
+    styles: string;
+}
+
 const settings = new SettingsSection("Cat-Jam-Party Settings", "catjamparty-settings");
+const elementSelector = ".main-nowPlayingBar-right";
+const cats: cat[] = [
+    {
+        id: "maxwell-webm",
+        defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/maxwell.webm",
+        styles: "width: 65px; height: 65px;",
+    },
+    {
+        id: "raver-webm",
+        defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/raver.webm",
+        styles: "width: 65px; height: 65px;",
+    },
+    {
+        id: "animal-crossing-cat-webm",
+        defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/animal%20crossing%20cat.webm",
+        styles: "width: 65px; height: 65px;",
+    },
+    {
+        id: "realistic-cat-webm",
+        defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/realistic.webm",
+        styles: "width: 65px; height: 65px;",
+    },
+    {
+        id: "cat-jam-webm",
+        defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/catjam.webm",
+        styles: "width: 65px; height: 65px;"
+    }
+]
+
 let audioData;
 
 // Function to adjust the video playback rate based on the current track's BPM
@@ -36,8 +72,7 @@ async function getPlaybackRate(audioData) {
 // Function that fetches audio data from "wg://audio-attributes/v1/audio-analysis/" with retry handling
 async function fetchAudioData(retryDelay = 200, maxRetries = 10) {
     try {
-        let audioData = await Spicetify.getAudioData();
-        return audioData;
+        return await Spicetify.getAudioData();
     } catch (error) {
         if (typeof error === "object" && error !== null && 'message' in error) {
             const message = error.message;
@@ -55,37 +90,32 @@ async function fetchAudioData(retryDelay = 200, maxRetries = 10) {
 }
 
 // Function to synchronize video playback timing with the music's beats
-async function syncTiming(startTime, progress) {
-    const videoElement = document.getElementById('catjam-webm') as HTMLVideoElement;
-    if (videoElement) {
-        if (Spicetify.Player.isPlaying()) {
-            progress = progress / 1000; // Convert progress from milliseconds to seconds
+async function syncTiming(startTime, progress, videoElement: HTMLVideoElement) {
+    if (Spicetify.Player.isPlaying()) {
+        progress = progress / 1000; // Convert progress from milliseconds to seconds
 
-            if (audioData && audioData.beats) {
-                // Find the nearest upcoming beat based on current progress
-                const upcomingBeat = audioData.beats.find(beat => beat.start > progress);
-                if (upcomingBeat) {
-                    const operationTime = performance.now() - startTime; // Time taken for the operation
-                    const delayUntilNextBeat = Math.max(0, (upcomingBeat.start - progress) * 1000 - operationTime); // Calculate delay until the next beat
+        if (audioData && audioData.beats) {
+            // Find the nearest upcoming beat based on current progress
+            const upcomingBeat = audioData.beats.find(beat => beat.start > progress);
+            if (upcomingBeat) {
+                const operationTime = performance.now() - startTime; // Time taken for the operation
+                const delayUntilNextBeat = Math.max(0, (upcomingBeat.start - progress) * 1000 - operationTime); // Calculate delay until the next beat
 
-                    setTimeout(() => {
-                        videoElement.currentTime = 0; // Reset video to start
-                        videoElement.play(); // Play the video
-                    }, delayUntilNextBeat);
-                } else {
-                    videoElement.currentTime = 0; // Reset video to start if no upcoming beat
-                    videoElement.play();
-                }
-                console.log("[CAT-JAM-PARTY] Resynchronized to nearest beat");
+                setTimeout(() => {
+                    videoElement.currentTime = 0; // Reset video to start
+                    videoElement.play(); // Play the video
+                }, delayUntilNextBeat);
             } else {
-                videoElement.currentTime = 0; // Play the video without delay if no beat information
+                videoElement.currentTime = 0; // Reset video to start if no upcoming beat
                 videoElement.play();
             }
+            console.log("[CAT-JAM-PARTY] Resynchronized to nearest beat");
         } else {
-            videoElement.pause(); // Pause the video if Spotify is not playing
+            videoElement.currentTime = 0; // Play the video without delay if no beat information
+            videoElement.play();
         }
     } else {
-        console.error("[CAT-JAM-PARTY] Video element not found.");
+        videoElement.pause(); // Pause the video if Spotify is not playing
     }
 }
 
@@ -104,34 +134,34 @@ async function waitForElement(selector, maxAttempts = 50, interval = 100) {
 }
 
 // Function that creates the WebM video and sets initial BPM and play state
-async function createWebMVideo() {
+async function createWebMVideo(targetElement: any, elementStyles: string, videoURL: string, elementId: string) {
     try {
-        const bottomPlayerClass = '.main-nowPlayingBar-right' // Selector for the bottom player
-        const leftLibraryClass = '.main-yourLibraryX-libraryItemContainer' // Selector for the left library
-        let leftLibraryVideoSize = Number(settings.getFieldValue("catjam-webm-position-left-size")); // Get the left library video size
-        if (!leftLibraryVideoSize) {
-            leftLibraryVideoSize = 100; // Default size of the video on the left library
-        }
-        const bottomPlayerStyle = 'width: 65px; height: 65px;'; // Style for the bottom player video
-        let leftLibraryStyle = `width: ${leftLibraryVideoSize}%; max-width: 300px; height: auto; max-height: 100%; position: absolute; bottom: 0; pointer-events: none; z-index: 1;` // Style for the left library video
-        let selectedPosition = settings.getFieldValue("catjam-webm-position"); // Get the selected position for the video
-
-        let targetElementSelector = selectedPosition === 'Bottom (Player)' ? bottomPlayerClass : leftLibraryClass;
-        let elementStyles = selectedPosition === 'Bottom (Player)' ? bottomPlayerStyle : leftLibraryStyle;
-        const targetElement = await waitForElement(targetElementSelector); // Wait until the target element is available
-
-        // Remove any existing video element to avoid duplicates
-        const existingVideo = document.getElementById('catjam-webm');
-        if (existingVideo) {
-            existingVideo.remove();
-        }
+        // const bottomPlayerClass = '.main-nowPlayingBar-right' // Selector for the bottom player
+        // const leftLibraryClass = '.main-yourLibraryX-libraryItemContainer' // Selector for the left library
+        // let leftLibraryVideoSize = Number(settings.getFieldValue("catjam-webm-position-left-size")); // Get the left library video size
+        // if (!leftLibraryVideoSize) {
+        //     leftLibraryVideoSize = 100; // Default size of the video on the left library
+        // }
+        // const bottomPlayerStyle = ''; // Style for the bottom player video
+        // let leftLibraryStyle = `width: ${leftLibraryVideoSize}%; max-width: 300px; height: auto; max-height: 100%; position: absolute; bottom: 0; pointer-events: none; z-index: 1;` // Style for the left library video
+        // let selectedPosition = settings.getFieldValue("catjam-webm-position"); // Get the selected position for the video
+        //
+        // let targetElementSelector = selectedPosition === 'Bottom (Player)' ? bottomPlayerClass : leftLibraryClass;
+        // let elementStyles = selectedPosition === 'Bottom (Player)' ? bottomPlayerStyle : leftLibraryStyle;
+        // const targetElement = await waitForElement(targetElementSelector); // Wait until the target element is available
+        //
+        // // Remove any existing video element to avoid duplicates
+        // const existingVideo = document.getElementById('catjam-webm');
+        // if (existingVideo) {
+        //     existingVideo.remove();
+        // }
 
         //
-        let videoURL = String(settings.getFieldValue("catjam-webm-link"));
-
-        if (!videoURL) {
-            videoURL = "https://github.com/BlafKing/spicetify-cat-jam-synced/raw/main/src/resources/catjam.webm"
-        }
+        // let videoURL = String(settings.getFieldValue("catjam-webm-link"));
+        //
+        // if (!videoURL) {
+        //     videoURL = "https://github.com/BlafKing/spicetify-cat-jam-synced/raw/main/src/resources/catjam.webm"
+        // }
 
         // Create a new video element to be inserted
         const videoElement = document.createElement('video');
@@ -139,8 +169,9 @@ async function createWebMVideo() {
         videoElement.setAttribute('autoplay', 'true'); // Video starts automatically
         videoElement.setAttribute('muted', 'true'); // Video is muted
         videoElement.setAttribute('style', elementStyles);
+        videoElement.classList.add('webm-party-video'); // Add class to identify videos when reloading
         videoElement.src = videoURL; // Set the source of the video
-        videoElement.id = 'catjam-webm'; // Assign an ID to the video element
+        videoElement.id = elementId; // Assign an ID to the video element
 
         audioData = await fetchAudioData(); // Fetch audio data
         videoElement.playbackRate = await getPlaybackRate(audioData); // Adjust playback rate based on the song's BPM
@@ -195,15 +226,15 @@ function calculateBetterBPM(danceability, energy, currentBPM) {
     const normalizedDanceability = danceability / 100;
     const normalizedEnergy = energy / 100;
 
-    if (normalizedDanceability < danceabilityTreshold){
+    if (normalizedDanceability < danceabilityTreshold) {
         danceabilityWeight *= normalizedDanceability;
     }
 
-    if (normalizedEnergy < energyTreshold){
+    if (normalizedEnergy < energyTreshold) {
         energyWeight *= normalizedEnergy;
     }
     // increase bpm weight if the song is slow
-    if (normalizedBPM < bpmThreshold){
+    if (normalizedBPM < bpmThreshold) {
         bpmWeight = 0.9;
     }
 
@@ -214,7 +245,7 @@ function calculateBetterBPM(danceability, energy, currentBPM) {
 
     const betterBPMForFasterSongs = settings.getFieldValue("catjam-webm-bpm-method-faster-songs") !== "Track BPM";
     if (betterBPM > currentBPM) {
-        if (betterBPMForFasterSongs){
+        if (betterBPMForFasterSongs) {
             betterBPM = (betterBPM + currentBPM) / 2;
         } else {
             betterBPM = currentBPM;
@@ -228,6 +259,74 @@ function calculateBetterBPM(danceability, energy, currentBPM) {
     return betterBPM;
 }
 
+function createSettingsUI() {
+    settings.addInput("catjam-webm-link", "Custom webM video URL (Link does not work if no video shows)", "");
+    settings.addInput("catjam-webm-bpm", "Custom default BPM of webM video (Example: 135.48)", "");
+    // Position is now permanently set to bottom player to have space for all the cats. Sorry :(
+    // settings.addDropDown("catjam-webm-position", "Position where webM video should be rendered", ['Bottom (Player)', 'Left (Library)'], 0);
+    settings.addDropDown("catjam-webm-bpm-method", "Method to calculate better BPM for slower songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
+    settings.addDropDown("catjam-webm-bpm-method-faster-songs", "Method to calculate better BPM for faster songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
+    settings.addInput("catjam-webm-position-left-size", "Size of webM video on the left library (Only works for left library, Default: 100)", "");
+    settings.addButton("catjamparty-reload", "Reload custom values", "Save and reload", () => {
+        createParty();
+    });
+    settings.pushSettings();
+}
+
+
+
+async function runCallbackOnCats(callback: (cat: HTMLVideoElement) => Promise<void>) {
+    const videoElements = document.getElementsByClassName("webm-party-video");
+    if (videoElements.length == 0) {
+        console.error("[CAT-JAM-PARTY] Video elements not found.");
+        return;
+    }
+
+    for (let i = 0; i < videoElements.length; i++) {
+        const videoElement = videoElements[i];
+        if (videoElement) {
+            await callback(videoElement as HTMLVideoElement); // Execute the callback function on each video element
+        }
+    }
+}
+
+async function createParty() {
+    // Remove any existing video element to avoid duplicates
+    const existingVideo = document.getElementsByClassName("webm-party-video")
+    for (let i = 0; i < existingVideo.length; i++) {
+        existingVideo[i].remove();
+    }
+
+    const targetElement = await waitForElement(elementSelector); // Wait until the target element is available
+    for (let i = 0; i < cats.length; i++) {
+        await createWebMVideo(targetElement, cats[i].styles, cats[i].defaultUrl, cats[i].id); // Create the video element
+    }
+}
+
+async function syncToSong(videoElement: HTMLVideoElement, startTime: number) {
+    audioData = await fetchAudioData(); // Fetch current audio data
+    console.log("[CAT-JAM-PARTY] Audio data fetched:", audioData);
+    if (audioData && audioData.beats && audioData.beats.length > 0) {
+        const firstBeatStart = audioData.beats[0].start; // Get start time of the first beat
+
+        // Adjust video playback rate based on the song's BPM
+        videoElement.playbackRate = await getPlaybackRate(audioData);
+
+        const operationTime = performance.now() - startTime; // Calculate time taken for operations
+        const delayUntilFirstBeat = Math.max(0, firstBeatStart * 1000 - operationTime); // Calculate delay until the first beat
+
+        setTimeout(() => {
+            videoElement.currentTime = 0; // Ensure video starts from the beginning
+            videoElement.play(); // Play the video
+        }, delayUntilFirstBeat);
+    } else {
+        videoElement.playbackRate = await getPlaybackRate(audioData); // Set playback rate even if no beat information
+        videoElement.currentTime = 0; // Ensure video starts from the beginning
+        videoElement.play(); // Play the video
+    }
+}
+
+
 // Main function to initialize and manage the Spicetify app extension
 async function main() {
     // Continuously check until the Spicetify Player and audio data APIs are available
@@ -237,24 +336,25 @@ async function main() {
     console.log("[CAT-JAM-PARTY] Extension loaded.");
     let audioData; // Initialize audio data variable
 
-    // Create Settings UI
-    settings.addInput("catjam-webm-link", "Custom webM video URL (Link does not work if no video shows)", "");
-    settings.addInput("catjam-webm-bpm", "Custom default BPM of webM video (Example: 135.48)", "");
-    settings.addDropDown("catjam-webm-position", "Position where webM video should be rendered", ['Bottom (Player)', 'Left (Library)'], 0);
-    settings.addDropDown("catjam-webm-bpm-method", "Method to calculate better BPM for slower songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
-    settings.addDropDown("catjam-webm-bpm-method-faster-songs", "Method to calculate better BPM for faster songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
-    settings.addInput("catjam-webm-position-left-size", "Size of webM video on the left library (Only works for left library, Default: 100)", "");
-    settings.addButton("catjam-reload", "Reload custom values", "Save and reload", () => {createWebMVideo();});
-    settings.pushSettings();
+    // Create settings UI for the extension
+    console.log("[CAT-JAM-PARTY] Creating settings UI...");
+    createSettingsUI()
 
     // Create initial WebM video
-    createWebMVideo();
+    console.log("[CAT-JAM-PARTY] Initializing cat jam videos...");
+    await createParty();
+    await runCallbackOnCats(async (videoElement) => {
+        console.log("[CAT-JAM-PARTY] ", videoElement);
+    });
 
+    // Add event listeners for player state changes
     Spicetify.Player.addEventListener("onplaypause", async () => {
         const startTime = performance.now();
         let progress = Spicetify.Player.getProgress();
         lastProgress = progress;
-        syncTiming(startTime, progress); // Synchronize video timing with the current progress
+        await runCallbackOnCats(async (videoElement) => {
+            await syncTiming(startTime, progress, videoElement); // Synchronize video timing with the current progress
+        });
     });
 
     let lastProgress = 0; // Initialize last known progress
@@ -264,7 +364,9 @@ async function main() {
 
         // Check if a significant skip in progress has occurred or if a significant time has passed
         if (Math.abs(progress - lastProgress) >= 500) {
-            syncTiming(currentTime, progress); // Synchronize video timing again
+            await runCallbackOnCats(async (videoElement) => {
+                await syncTiming(currentTime, progress, videoElement); // Synchronize video timing again
+            });
         }
         lastProgress = progress; // Update last known progress
     });
@@ -273,31 +375,9 @@ async function main() {
         const startTime = performance.now(); // Record the start time for the operation
         lastProgress = Spicetify.Player.getProgress();
 
-        const videoElement = document.getElementById('catjam-webm')as HTMLVideoElement;
-        if (videoElement) {
-            audioData = await fetchAudioData(); // Fetch current audio data
-            console.log("[CAT-JAM-PARTY] Audio data fetched:", audioData);
-            if (audioData && audioData.beats && audioData.beats.length > 0) {
-                const firstBeatStart = audioData.beats[0].start; // Get start time of the first beat
-
-                // Adjust video playback rate based on the song's BPM
-                videoElement.playbackRate = await getPlaybackRate(audioData);
-
-                const operationTime = performance.now() - startTime; // Calculate time taken for operations
-                const delayUntilFirstBeat = Math.max(0, firstBeatStart * 1000 - operationTime); // Calculate delay until the first beat
-
-                setTimeout(() => {
-                    videoElement.currentTime = 0; // Ensure video starts from the beginning
-                    videoElement.play(); // Play the video
-                }, delayUntilFirstBeat);
-            } else {
-                videoElement.playbackRate = await getPlaybackRate(audioData); // Set playback rate even if no beat information
-                videoElement.currentTime = 0; // Ensure video starts from the beginning
-                videoElement.play(); // Play the video
-            }
-        } else {
-            console.error("[CAT-JAM-PARTY] Video element not found.");
-        }
+        await runCallbackOnCats(async (videoElement) => {
+            await syncToSong(videoElement, startTime);
+        });
     });
 }
 
