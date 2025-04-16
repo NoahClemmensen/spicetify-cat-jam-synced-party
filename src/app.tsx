@@ -4,35 +4,42 @@ type cat = {
     id: string;
     defaultUrl: string;
     styles: string;
+    onTheRight: boolean;
 }
 
 const settings = new SettingsSection("Cat-Jam-Party Settings", "catjamparty-settings");
-const elementSelector = ".main-nowPlayingBar-right";
+const elementSelectorLeft = ".main-nowPlayingBar-left";
+const elementSelectorRight = ".main-nowPlayingBar-right";
 const cats: cat[] = [
     {
         id: "maxwell-webm",
         defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/maxwell.webm",
         styles: "width: 65px; height: 65px;",
+        onTheRight: false,
     },
     {
         id: "raver-webm",
         defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/raver.webm",
         styles: "width: 65px; height: 65px;",
+        onTheRight: false,
     },
     {
         id: "animal-crossing-cat-webm",
         defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/animal%20crossing%20cat.webm",
         styles: "width: 65px; height: 65px;",
+        onTheRight: false,
     },
     {
         id: "realistic-cat-webm",
         defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/realistic.webm",
         styles: "width: 65px; height: 65px;",
+        onTheRight: true,
     },
     {
         id: "cat-jam-webm",
         defaultUrl: "https://github.com/NoahClemmensen/spicetify-cat-jam-synced-party/raw/refs/heads/main/src/resources/catjam.webm",
-        styles: "width: 65px; height: 65px;"
+        styles: "width: 65px; height: 65px;",
+        onTheRight: true,
     }
 ]
 
@@ -134,35 +141,8 @@ async function waitForElement(selector, maxAttempts = 50, interval = 100) {
 }
 
 // Function that creates the WebM video and sets initial BPM and play state
-async function createWebMVideo(targetElement: any, elementStyles: string, videoURL: string, elementId: string) {
+async function createWebMVideo(targetElement: any, elementStyles: string, videoURL: string, elementId: string, beforeInsert: boolean = false) {
     try {
-        // const bottomPlayerClass = '.main-nowPlayingBar-right' // Selector for the bottom player
-        // const leftLibraryClass = '.main-yourLibraryX-libraryItemContainer' // Selector for the left library
-        // let leftLibraryVideoSize = Number(settings.getFieldValue("catjam-webm-position-left-size")); // Get the left library video size
-        // if (!leftLibraryVideoSize) {
-        //     leftLibraryVideoSize = 100; // Default size of the video on the left library
-        // }
-        // const bottomPlayerStyle = ''; // Style for the bottom player video
-        // let leftLibraryStyle = `width: ${leftLibraryVideoSize}%; max-width: 300px; height: auto; max-height: 100%; position: absolute; bottom: 0; pointer-events: none; z-index: 1;` // Style for the left library video
-        // let selectedPosition = settings.getFieldValue("catjam-webm-position"); // Get the selected position for the video
-        //
-        // let targetElementSelector = selectedPosition === 'Bottom (Player)' ? bottomPlayerClass : leftLibraryClass;
-        // let elementStyles = selectedPosition === 'Bottom (Player)' ? bottomPlayerStyle : leftLibraryStyle;
-        // const targetElement = await waitForElement(targetElementSelector); // Wait until the target element is available
-        //
-        // // Remove any existing video element to avoid duplicates
-        // const existingVideo = document.getElementById('catjam-webm');
-        // if (existingVideo) {
-        //     existingVideo.remove();
-        // }
-
-        //
-        // let videoURL = String(settings.getFieldValue("catjam-webm-link"));
-        //
-        // if (!videoURL) {
-        //     videoURL = "https://github.com/BlafKing/spicetify-cat-jam-synced/raw/main/src/resources/catjam.webm"
-        // }
-
         // Create a new video element to be inserted
         const videoElement = document.createElement('video');
         videoElement.setAttribute('loop', 'true'); // Video loops continuously
@@ -176,7 +156,7 @@ async function createWebMVideo(targetElement: any, elementStyles: string, videoU
         audioData = await fetchAudioData(); // Fetch audio data
         videoElement.playbackRate = await getPlaybackRate(audioData); // Adjust playback rate based on the song's BPM
         // Insert the video element into the target element in the DOM
-        if (targetElement.firstChild) {
+        if (targetElement.firstChild && beforeInsert) {
             targetElement.insertBefore(videoElement, targetElement.firstChild);
         } else {
             targetElement.appendChild(videoElement);
@@ -273,8 +253,6 @@ function createSettingsUI() {
     settings.pushSettings();
 }
 
-
-
 async function runCallbackOnCats(callback: (cat: HTMLVideoElement) => Promise<void>) {
     const videoElements = document.getElementsByClassName("webm-party-video");
     if (videoElements.length == 0) {
@@ -297,9 +275,9 @@ async function createParty() {
         existingVideo[i].remove();
     }
 
-    const targetElement = await waitForElement(elementSelector); // Wait until the target element is available
     for (let i = 0; i < cats.length; i++) {
-        await createWebMVideo(targetElement, cats[i].styles, cats[i].defaultUrl, cats[i].id); // Create the video element
+        let targetElement = await waitForElement(cats[i].onTheRight ? elementSelectorRight : elementSelectorLeft); // Wait until the target element is available
+        await createWebMVideo(targetElement, cats[i].styles, cats[i].defaultUrl, cats[i].id, cats[i].onTheRight); // Create the video element
     }
 }
 
@@ -326,7 +304,6 @@ async function syncToSong(videoElement: HTMLVideoElement, startTime: number) {
     }
 }
 
-
 // Main function to initialize and manage the Spicetify app extension
 async function main() {
     // Continuously check until the Spicetify Player and audio data APIs are available
@@ -339,6 +316,12 @@ async function main() {
     // Create settings UI for the extension
     console.log("[CAT-JAM-PARTY] Creating settings UI...");
     createSettingsUI()
+
+    // Style the left side of the player to not wrap
+    const leftArea = await waitForElement(elementSelectorLeft);
+    if (leftArea) {
+        leftArea.setAttribute("style", "display: flex; flex-wrap: nowrap; align-items: center;");
+    }
 
     // Create initial WebM video
     console.log("[CAT-JAM-PARTY] Initializing cat jam videos...");
