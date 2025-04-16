@@ -1,4 +1,4 @@
-# Cat Jam Synced
+# Cat Jam Party Synced
 
 ![preview](marketplace/preview.gif)
 
