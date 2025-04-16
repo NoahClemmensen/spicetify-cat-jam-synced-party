@@ -48,7 +48,6 @@ let audioData;
 // Function to adjust the video playback rate based on the current track's BPM
 async function getPlaybackRate(audioData) {
     let videoDefaultBPM = Number(settings.getFieldValue("catjamparty-webm-bpm"));
-    console.log(videoDefaultBPM);
     if (!videoDefaultBPM) {
         videoDefaultBPM = 135.48;
     }
@@ -58,7 +57,6 @@ async function getPlaybackRate(audioData) {
         let bpmMethod = settings.getFieldValue("catjamparty-webm-bpm-method");
         let bpmToUse = trackBPM;
         if (bpmMethod !== "Track BPM") {
-            console.log("[CAT-JAM-PARTY] Using danceability, energy and track BPM to calculate better BPM");
             bpmToUse = await getBetterBPM(trackBPM);
             console.log("[CAT-JAM-PARTY] Better BPM:", bpmToUse)
         }
@@ -116,7 +114,6 @@ async function syncTiming(startTime, progress, videoElement: HTMLVideoElement) {
                 videoElement.currentTime = 0; // Reset video to start if no upcoming beat
                 videoElement.play();
             }
-            console.log("[CAT-JAM-PARTY] Resynchronized to nearest beat");
         } else {
             videoElement.currentTime = 0; // Play the video without delay if no beat information
             videoElement.play();
@@ -221,8 +218,6 @@ function calculateBetterBPM(danceability, energy, currentBPM) {
     const weightedAverage = (normalizedDanceability * danceabilityWeight + normalizedEnergy * energyWeight + normalizedBPM * bpmWeight) / (1 - danceabilityWeight + 1 - energyWeight + bpmWeight);
     let betterBPM = weightedAverage * maxBPM;
 
-    console.log({danceabilityWeight, energyWeight, currentBPM, weightedAverage, betterBPM, bpmWeight})
-
     const betterBPMForFasterSongs = settings.getFieldValue("catjam-webm-bpm-method-faster-songs") !== "Track BPM";
     if (betterBPM > currentBPM) {
         if (betterBPMForFasterSongs) {
@@ -240,15 +235,14 @@ function calculateBetterBPM(danceability, energy, currentBPM) {
 }
 
 function createSettingsUI() {
-    settings.addInput("catjam-webm-link", "Custom webM video URL (Link does not work if no video shows)", "");
-    settings.addInput("catjam-webm-bpm", "Custom default BPM of webM video (Example: 135.48)", "");
+    settings.addInput("catjamparty-webm-bpm", "Custom default BPM of webM video (Example: 135.48)", "");
     // Position is now permanently set to bottom player to have space for all the cats. Sorry :(
     // settings.addDropDown("catjam-webm-position", "Position where webM video should be rendered", ['Bottom (Player)', 'Left (Library)'], 0);
-    settings.addDropDown("catjam-webm-bpm-method", "Method to calculate better BPM for slower songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
-    settings.addDropDown("catjam-webm-bpm-method-faster-songs", "Method to calculate better BPM for faster songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
-    settings.addInput("catjam-webm-position-left-size", "Size of webM video on the left library (Only works for left library, Default: 100)", "");
-    settings.addButton("catjamparty-reload", "Reload custom values", "Save and reload", () => {
-        createParty();
+    settings.addDropDown("catjamparty-webm-bpm-method", "Method to calculate better BPM for slower songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
+    settings.addDropDown("catjamparty-webm-bpm-method-faster-songs", "Method to calculate better BPM for faster songs", ['Track BPM', 'Danceability, Energy and Track BPM'], 0);
+    settings.addInput("catjamparty-webm-position-left-size", "Size of webM video on the left library (Only works for left library, Default: 100)", "");
+    settings.addButton("catjamparty-reload", "Reload custom values", "Save and reload", async () => {
+        await createParty();
     });
     settings.pushSettings();
 }
@@ -270,7 +264,7 @@ async function runCallbackOnCats(callback: (cat: HTMLVideoElement) => Promise<vo
 
 async function createParty() {
     // Remove any existing video element to avoid duplicates
-    const existingVideo = document.getElementsByClassName("webm-party-video")
+    const existingVideo = Array.from(document.getElementsByClassName("webm-party-video"));
     for (let i = 0; i < existingVideo.length; i++) {
         existingVideo[i].remove();
     }
@@ -283,7 +277,6 @@ async function createParty() {
 
 async function syncToSong(videoElement: HTMLVideoElement, startTime: number) {
     audioData = await fetchAudioData(); // Fetch current audio data
-    console.log("[CAT-JAM-PARTY] Audio data fetched:", audioData);
     if (audioData && audioData.beats && audioData.beats.length > 0) {
         const firstBeatStart = audioData.beats[0].start; // Get start time of the first beat
 
@@ -314,7 +307,6 @@ async function main() {
     let audioData; // Initialize audio data variable
 
     // Create settings UI for the extension
-    console.log("[CAT-JAM-PARTY] Creating settings UI...");
     createSettingsUI()
 
     // Style the left side of the player to not wrap
@@ -324,11 +316,7 @@ async function main() {
     }
 
     // Create initial WebM video
-    console.log("[CAT-JAM-PARTY] Initializing cat jam videos...");
     await createParty();
-    await runCallbackOnCats(async (videoElement) => {
-        console.log("[CAT-JAM-PARTY] ", videoElement);
-    });
 
     // Add event listeners for player state changes
     Spicetify.Player.addEventListener("onplaypause", async () => {
